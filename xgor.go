@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-type filterType map[string]any
+type FilterType map[string]any
 type ListItems[T any] struct {
 	Items       *[]T
 	TotalCount  int64
@@ -18,8 +18,8 @@ type Repository[T any] interface {
 	Update(item *T) error
 	Delete(item *T) error
 	GetByID(id interface{}) (*T, error)
-	GetWithCustomFilters(filters filterType) (*T, error)
-	GetAll(limit *int, offset *int, orderBy *string, filters filterType) (ListItems[T], error)
+	GetWithCustomFilters(filters FilterType) (*T, error)
+	GetAll(limit *int, offset *int, orderBy *string, filters FilterType) (ListItems[T], error)
 	PerformTransaction(fn func(tx *gorm.DB) error) error
 	DeleteRelationship(item *T, relationship string) error
 }
@@ -66,7 +66,7 @@ func (r *BaseRepository[T]) Delete(item *T) error {
 	return r.db.Delete(item).Error
 }
 
-func (r *BaseRepository[T]) GetWithCustomFilters(filters filterType) (*T, error) {
+func (r *BaseRepository[T]) GetWithCustomFilters(filters FilterType) (*T, error) {
 	limit := 1
 	entity, err := r.GetAll(&limit, nil, nil, filters)
 	if err != nil || entity.TotalCount == 0 {
@@ -88,7 +88,7 @@ func (r *BaseRepository[T]) GetByID(id interface{}) (*T, error) {
 	return entity, nil
 }
 
-func (r *BaseRepository[T]) GetAll(limit *int, offset *int, orderBy *string, filters filterType) (ListItems[T], error) {
+func (r *BaseRepository[T]) GetAll(limit *int, offset *int, orderBy *string, filters FilterType) (ListItems[T], error) {
 	var total int64
 
 	countQuery := r.preload().Model(new(T)).Scopes(r.applyFilters(filters))
@@ -144,7 +144,7 @@ func (r *BaseRepository[T]) DeleteRelationship(item *T, relationship string) err
 	return r.db.Model(item).Association(relationship).Clear()
 }
 
-func (r *BaseRepository[T]) applyFilters(filters filterType) func(db *gorm.DB) *gorm.DB {
+func (r *BaseRepository[T]) applyFilters(filters FilterType) func(db *gorm.DB) *gorm.DB {
 	return func(db *gorm.DB) *gorm.DB {
 		for c, v := range filters {
 			col, val := c, v
@@ -200,4 +200,8 @@ func (r *BaseRepository[T]) orderBy(orderBy *string) func(db *gorm.DB) *gorm.DB 
 		}
 		return db
 	}
+}
+
+func Open(dialector gorm.Dialector, opts ...gorm.Option) (*gorm.DB, error) {
+	return gorm.Open(dialector, opts...)
 }
